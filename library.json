@@ -5,7 +5,7 @@
   "keywords": "radar, ld2415h, hlk, doppler, velocity, mmwave, serial",
   "repository": {
     "type": "git",
-    "url": "https://github.com/cptskippy/ld2415h-cpp.git"
+    "url": "https://github.com/cptskippy/ld2415h.git"
   },
   "license": "MIT",
   "authors": {
