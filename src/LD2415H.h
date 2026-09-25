@@ -92,9 +92,8 @@ struct Configuration {
 // Transport-agnostic LD2415H protocol engine.
 //
 // Owns the command state machine and response parser. Call update()
-// from your loop (ESPHome Component::loop, Arduino loop(), etc.); it
-// drains the transport, parses complete responses, and issues any
-// pending configuration commands one per call.
+// from your application loop; it drains the transport, parses complete
+// responses, and issues any pending configuration commands one per call.
 class LD2415H {
  public:
   explicit LD2415H(Transport *transport, Logger *logger = nullptr);

@@ -1,12 +1,12 @@
 CXX ?= g++
-CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -O2 -Iinclude
+CXXFLAGS ?= -std=c++17 -Wall -Wextra -Werror -O2 -Isrc
 
 all: test
 
 test: test/test_ld2415h
 	./test/test_ld2415h
 
-test/test_ld2415h: test/test_ld2415h.cpp src/LD2415H.cpp include/LD2415H.h
+test/test_ld2415h: test/test_ld2415h.cpp src/LD2415H.cpp src/LD2415H.h
 	$(CXX) $(CXXFLAGS) $< src/LD2415H.cpp -o $@
 
 clean:
