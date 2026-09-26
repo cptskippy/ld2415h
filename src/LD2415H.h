@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+namespace hlk {
 namespace ld2415h {
 
 // Log levels
@@ -170,3 +171,4 @@ class LD2415H {
 };
 
 }  // namespace ld2415h
+}  // namespace hlk

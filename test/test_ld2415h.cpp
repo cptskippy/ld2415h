@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-using namespace ld2415h;
+using namespace hlk::ld2415h;
 
 // ---------------------------------------------------------------- harness
 

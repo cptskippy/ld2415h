@@ -2,6 +2,7 @@
 
 #include <cstdio>
 
+namespace hlk {
 namespace ld2415h {
 
 static const char *const kTag = "ld2415h";
@@ -413,3 +414,4 @@ void LD2415H::logDebug(const char *message) { log(LogLevel::DEBUG, message); }
 void LD2415H::logError(const char *message) { log(LogLevel::ERROR, message); }
 
 }  // namespace ld2415h
+}  // namespace hlk
