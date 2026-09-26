@@ -32,14 +32,16 @@ Transport-agnostic protocol library for the Hi-Link HLK-LD2415H K-band velocity 
 ```cpp
 #include "LD2415H.h"
 
-class MyTransport : public ld2415h::Transport {
+namespace hlk_ld = hlk::ld2415h;
+
+class MyTransport : public hlk_ld::Transport {
   int available() override { return serial.available(); }
   int read() override { return serial.read(); }
   void write(const uint8_t *d, uint8_t n) override { serial.write(d, n); }
 };
 
 MyTransport transport;
-ld2415h::LD2415H radar(&transport);
+hlk_ld::LD2415H radar(&transport);
 
 radar.registerListener(&myListener);   // onSpeed / onVelocity / onConfig
 radar.setSensitivity(10);              // staged; sent on a later update()
