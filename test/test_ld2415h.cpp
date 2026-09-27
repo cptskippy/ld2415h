@@ -346,6 +346,91 @@ static void testEnumToString() {
   CHECK(std::string(enumToString(negotiationModeStrings(), 0x02)) == "Standard Protocol");
 }
 
+// The config read (0x07) is reissued when the radar never answers, up to a
+// bounded number of attempts, then gives up with a single error.
+static void testConfigReadRetry() {
+  FakeTransport t;
+  CaptureLogger l;
+  LD2415H radar(&t, &l);
+
+  // Drain the four initial set frames.
+  for (int i = 0; i < 4; i++) radar.update();
+  t.reset();
+
+  radar.requestConfig();
+  for (int i = 0; i < 4500; i++) {
+    radar.update();
+  }
+
+  // Count 0x07 commands: expect exactly the retry budget (5 total sends).
+  int configReads = 0;
+  for (const auto &cmd : t.commands()) {
+    if (cmd.size() == 13 && cmd[0] == 0x43 && cmd[1] == 0x46 && cmd[2] == 0x07)
+      configReads++;
+  }
+  CHECK(configReads == 5);
+  // One give-up error once the budget is exhausted.
+  CHECK(l.errors.size() == 1);
+  // Config was never received, so state is untouched.
+  CHECK(radar.getConfiguration().minSpeedThreshold == 1);
+}
+
+// Once a config response has parsed, a later request does not re-fire reads
+// on its own (the read is one-shot per requestConfig until re-requested).
+static void testConfigReadStopsAfterResponse() {
+  FakeTransport t;
+  CaptureLogger l;
+  TestListener listener;
+  LD2415H radar(&t, &l);
+  radar.registerListener(&listener);
+  for (int i = 0; i < 4; i++) radar.update();
+  t.reset();
+
+  radar.requestConfig();
+  radar.update();  // sends 0x07
+  t.feed("X1:01 X2:00 X3:05 X4:00 X5:01 X6:00 X7:00 X8:00 X9:00 X0:01\r\n");
+  radar.update();  // parses, configReceived_ = true
+  CHECK(listener.configCalls == 1);
+
+  // Run well past the retry interval; no further 0x07 should be issued.
+  int before = 0;
+  for (const auto &cmd : t.commands())
+    if (cmd.size() == 13 && cmd[2] == 0x07) before++;
+  for (int i = 0; i < 1200; i++) radar.update();
+  int after = 0;
+  for (const auto &cmd : t.commands())
+    if (cmd.size() == 13 && cmd[2] == 0x07) after++;
+  CHECK(after == before);
+  CHECK(l.errors.empty());
+}
+
+// The datasheet shows firmware and config in a single combined line:
+// "No.:YYYYMMDD vN.N X1:01 ... X0:01". Both must be extracted.
+static void testCombinedFirmwareConfigLine() {
+  FakeTransport t;
+  CaptureLogger l;
+  TestListener listener;
+  LD2415H radar(&t, &l);
+  radar.registerListener(&listener);
+  for (int i = 0; i < 4; i++) radar.update();
+  t.reset();
+
+  radar.requestConfig();
+  radar.update();  // sends 0x07
+
+  t.feed("No.:20210726 v3.0 X1:03 X2:0A X3:05 X4:00 X5:01 X6:00 X7:20 X8:00 X9:00 X0:01\r\n");
+  radar.update();
+
+  CHECK(radar.getFirmwareVersion() == "20210726 v3.0");
+  const auto &cfg = radar.getConfiguration();
+  CHECK(cfg.minSpeedThreshold == 0x03);
+  CHECK(cfg.compensationAngle == 0x0A);
+  CHECK(cfg.sensitivity == 0x05);
+  CHECK(cfg.vibrationCorrection == 0x20);
+  CHECK(listener.configCalls == 1);
+  CHECK(l.errors.empty());
+}
+
 int main() {
   testInitialCommandSequence();
   testSetterStaging();
@@ -357,6 +442,9 @@ int main() {
   testBufferOverflow();
   testListenerManagement();
   testEnumToString();
+  testConfigReadRetry();
+  testConfigReadStopsAfterResponse();
+  testCombinedFirmwareConfigLine();
 
   std::printf("%d checks, %d failures\n", g_checks, g_failures);
   return g_failures == 0 ? 0 : 1;
