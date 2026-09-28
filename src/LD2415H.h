@@ -136,6 +136,7 @@ class LD2415H {
   void clearRemainingBuffer(uint8_t pos);
   void parseBuffer();
   void parseConfig();
+  void parseConfigLine(char *line);
   void parseConfigParam(char *key, char *value);
   void parseFirmware();
   void parseSpeed();
@@ -165,8 +166,20 @@ class LD2415H {
   bool updateRelayDurationSpeed_ = true;
   bool updateConfig_ = false;
 
-  // Response line buffer, NUL-terminated.
-  char responseBuffer_[64];
+  // Config read (0x07) retry state. The radar may not answer the first
+  // read after power-up, so reissue until a response parses or the
+  // attempt budget is exhausted.
+  static constexpr uint32_t kConfigRetryInterval = 1000;  // update() calls
+  static constexpr uint32_t kConfigRetryMax = 5;
+  uint32_t configSends_ = 0;
+  uint32_t configSinceSend_ = 0;
+  bool configReceived_ = false;
+  bool configGiveUp_ = false;
+
+  // Response line buffer, NUL-terminated. Sized for the combined
+  // firmware+config line the radar emits for command 0x07
+  // ("No.:YYYYMMDD vN.N X1:01 ... X0:01" is ~80 bytes).
+  char responseBuffer_[128];
   uint8_t responseBufferIndex_ = 0;
 };
 

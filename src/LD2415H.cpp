@@ -103,10 +103,22 @@ void LD2415H::update() {
     return;
   }
 
-  if (updateConfig_) {
-    issueCommand(kCmdGetConfig, sizeof(kCmdGetConfig));
-    updateConfig_ = false;
-    return;
+  // Config read (0x07). The radar can be slow to answer the first read
+  // after power-up, so reissue every kConfigRetryInterval update() calls
+  // until a response parses or the attempt budget is exhausted. A late
+  // response is still accepted.
+  if (updateConfig_ && !configReceived_) {
+    if (configSends_ < kConfigRetryMax) {
+      if (configSends_ == 0 || ++configSinceSend_ >= kConfigRetryInterval) {
+        issueCommand(kCmdGetConfig, sizeof(kCmdGetConfig));
+        configSends_++;
+        configSinceSend_ = 0;
+        return;
+      }
+    } else if (!configGiveUp_) {
+      logError("Config read (0x07): no response after 5 attempts");
+      configGiveUp_ = true;
+    }
   }
 }
 
@@ -216,7 +228,8 @@ void LD2415H::parseBuffer() {
 
   switch (c) {
     case 'N':
-      // Firmware Version
+      // Firmware Version, possibly followed by a config block on the
+      // same line (the datasheet shows both in one response).
       parseFirmware();
       break;
     case 'X':
@@ -234,15 +247,63 @@ void LD2415H::parseBuffer() {
   }
 }
 
+void LD2415H::parseFirmware() {
+  // Example: "No.:20230801E v5.0"
+  // The same line may also carry the config block: "No.:... v5.0 X1:01 ..."
+  // (The datasheet shows firmware and config in a single response to 0x07.)
+
+  const char *fw = std::strchr(responseBuffer_, ':');
+
+  if (fw != nullptr) {
+    // Move past the ':'
+    ++fw;
+
+    // The version string ends at the first config token if one follows.
+    const char *end = std::strchr(fw, 'X');
+    std::string version(end != nullptr ? std::string(fw, end) : fw);
+
+    // Strip trailing whitespace/control chars the sensor appends.
+    while (!version.empty() && (version.back() == '\r' || version.back() == '\n' ||
+                                version.back() == ' ' ||
+                                static_cast<unsigned char>(version.back()) == 0xff)) {
+      version.pop_back();
+    }
+    firmware_ = version;
+
+    if (end != nullptr) {
+      // Config block on the same line as the firmware string.
+      parseConfigLine(const_cast<char *>(end));
+    }
+  } else {
+    logError("Firmware value invalid.");
+  }
+}
+
 void LD2415H::parseConfig() {
   // Example: "X1:01 X2:00 X3:05 X4:01 X5:00 X6:00 X7:05 X8:03 X9:01 X0:01"
+  parseConfigLine(responseBuffer_);
+}
+
+void LD2415H::parseConfigLine(char *line) {
+  // A config block: "X1:01 X2:00 ... X0:01", optionally with a
+  // firmware prefix ("No.:YYYYMMDD vN.N") on the same line.
+
+  // Skip a leading firmware prefix if present.
+  if (line[0] == 'N') {
+    const char *x = std::strchr(line, 'X');
+    if (x == nullptr) {
+      logError("Configuration line has no parameters.");
+      return;
+    }
+    line = const_cast<char *>(x);
+  }
 
   const char *delim = ": ";
   const uint8_t tokenLen = 2;
   char *key;
   char *val;
 
-  char *token = std::strtok(responseBuffer_, delim);
+  char *token = std::strtok(line, delim);
 
   while (token != nullptr) {
     if (std::strlen(token) != tokenLen) {
@@ -267,29 +328,11 @@ void LD2415H::parseConfig() {
     token = std::strtok(nullptr, delim);
   }
 
+  configReceived_ = true;
+  logDebug("Config read: response received");
+
   for (auto &listener : listeners_) {
     listener->onConfig();
-  }
-}
-
-void LD2415H::parseFirmware() {
-  // Example: "No.:20230801E v5.0"
-
-  const char *fw = std::strchr(responseBuffer_, ':');
-
-  if (fw != nullptr) {
-    // Move past the ':'
-    ++fw;
-
-    // Strip trailing whitespace/control chars the sensor appends.
-    firmware_.assign(fw);
-    while (!firmware_.empty() && (firmware_.back() == '\r' || firmware_.back() == '\n' ||
-                                  firmware_.back() == ' ' ||
-                                  static_cast<unsigned char>(firmware_.back()) == 0xff)) {
-      firmware_.pop_back();
-    }
-  } else {
-    logError("Firmware value invalid.");
   }
 }
 
