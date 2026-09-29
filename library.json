@@ -1,6 +1,6 @@
 {
   "name": "LD2415H",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Transport-agnostic protocol library for the Hi-Link HLK-LD2415H K-band velocity radar sensor (serial, custom agreement + standard protocol).",
   "keywords": "radar, ld2415h, hlk, doppler, velocity, mmwave, serial",
   "repository": {

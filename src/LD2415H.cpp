@@ -177,6 +177,14 @@ void LD2415H::setRelayTriggerSpeed(uint8_t value) {
   updateRelayDurationSpeed_ = true;
 }
 
+void LD2415H::resetConfiguration() {
+  config_.reset();
+  updateSpeedAngleSense_ = true;
+  updateModeRateUom_ = true;
+  updateAntiVibComp_ = true;
+  updateRelayDurationSpeed_ = true;
+}
+
 void LD2415H::requestConfig() { updateConfig_ = true; }
 
 void LD2415H::issueCommand(const uint8_t *cmd, uint8_t size) {

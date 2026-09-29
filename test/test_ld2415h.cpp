@@ -438,6 +438,40 @@ static void testCombinedFirmwareConfigLine() {
   CHECK(l.errors.empty());
 }
 
+// resetConfiguration restores defaults and re-stages every parameter frame.
+static void testResetConfiguration() {
+  FakeTransport t;
+  LD2415H radar(&t);
+
+  // Drain the initial four frames.
+  for (int i = 0; i < 4; i++) radar.update();
+  t.reset();
+
+  radar.setSensitivity(0x0F);
+  radar.update();
+  CHECK(radar.getConfiguration().sensitivity == 0x0F);
+
+  radar.resetConfiguration();
+  CHECK(radar.getConfiguration().sensitivity == 10);
+  t.reset();
+
+  // All four frames are re-staged and carry default values.
+  radar.update();
+  auto cmd = t.popCommand();
+  CHECK(cmd.size() == 8 && cmd[2] == 0x01 && cmd[3] == 1 && cmd[4] == 0 && cmd[5] == 10);
+  radar.update();
+  cmd = t.popCommand();
+  CHECK(cmd.size() == 8 && cmd[2] == 0x02 && cmd[5] == 0x00);
+  radar.update();
+  cmd = t.popCommand();
+  CHECK(cmd.size() == 8 && cmd[2] == 0x03 && cmd[3] == 18);
+  radar.update();
+  cmd = t.popCommand();
+  CHECK(cmd.size() == 8 && cmd[2] == 0x04 && cmd[3] == 0 && cmd[4] == 1);
+  radar.update();
+  CHECK(t.commands().empty());
+}
+
 int main() {
   testInitialCommandSequence();
   testSetterStaging();
@@ -452,6 +486,7 @@ int main() {
   testConfigReadRetry();
   testConfigReadStopsAfterResponse();
   testCombinedFirmwareConfigLine();
+  testResetConfiguration();
 
   std::printf("%d checks, %d failures\n", g_checks, g_failures);
   return g_failures == 0 ? 0 : 1;

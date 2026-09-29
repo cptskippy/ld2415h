@@ -127,9 +127,15 @@ class LD2415H {
 
   // ---- Read state ------------------------------------------------------
   const Configuration &getConfiguration() const { return config_; }
+  // Writable access for hosts that persist the configuration (e.g. flash).
+  Configuration &mutableConfiguration() { return config_; }
   const std::string &getFirmwareVersion() const { return firmware_; }
   float getSpeed() const { return speed_; }
   float getVelocity() const { return velocity_; }
+
+  // Restore the built-in default configuration and re-stage all
+  // parameter frames so they are pushed on subsequent update() calls.
+  void resetConfiguration();
 
  private:
   void issueCommand(const uint8_t *cmd, uint8_t size);
