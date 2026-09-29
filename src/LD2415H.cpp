@@ -79,6 +79,7 @@ void LD2415H::update() {
     std::memcpy(cmd, kCmdSetModeRateUom, sizeof(cmd));
     cmd[3] = static_cast<uint8_t>(config_.trackingMode);
     cmd[4] = config_.sampleRate;
+    cmd[5] = static_cast<uint8_t>(config_.unitOfMeasure);
     issueCommand(cmd, sizeof(cmd));
     updateModeRateUom_ = false;
     return;
@@ -153,6 +154,11 @@ void LD2415H::setTrackingMode(TrackingMode mode) {
 
 void LD2415H::setSampleRate(uint8_t rate) {
   config_.sampleRate = rate;
+  updateModeRateUom_ = true;
+}
+
+void LD2415H::setUnitOfMeasure(UnitOfMeasure uom) {
+  config_.unitOfMeasure = uom;
   updateModeRateUom_ = true;
 }
 

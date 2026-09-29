@@ -116,6 +116,7 @@ class LD2415H {
   void setSensitivity(uint8_t value);
   void setTrackingMode(TrackingMode mode);
   void setSampleRate(uint8_t rate);
+  void setUnitOfMeasure(UnitOfMeasure uom);
   void setVibrationCorrection(uint8_t value);
   void setRelayTriggerDuration(uint8_t value);
   void setRelayTriggerSpeed(uint8_t value);

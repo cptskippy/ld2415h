@@ -161,6 +161,13 @@ static void testSetterStaging() {
   cmd = t.popCommand();
   CHECK(cmd.size() == 8 && cmd[2] == 0x02);
   CHECK(cmd[3] == 0x02 && cmd[4] == 0x02);
+
+  radar.setUnitOfMeasure(UnitOfMeasure::MPH);
+  radar.update();
+  cmd = t.popCommand();
+  CHECK(cmd.size() == 8 && cmd[2] == 0x02);
+  CHECK(cmd[5] == 0x01);
+  CHECK(radar.getConfiguration().unitOfMeasure == UnitOfMeasure::MPH);
 }
 
 // Full config read: request, parse the X1..X0 block, verify state.
